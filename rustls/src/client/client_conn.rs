@@ -17,7 +17,7 @@ use crate::error::Error;
 #[cfg(feature = "logging")]
 use crate::log::trace;
 use crate::msgs::enums::NamedGroup;
-use crate::msgs::handshake::ClientExtension;
+use crate::msgs::handshake::{ClientExtension, Random};
 use crate::msgs::persist;
 use crate::suites::SupportedCipherSuite;
 #[cfg(feature = "std")]
@@ -569,6 +569,7 @@ mod connection {
     use crate::common_state::Protocol;
     use crate::conn::{ConnectionCommon, ConnectionCore};
     use crate::error::Error;
+    use crate::msgs::handshake::Random;
     use crate::suites::ExtractedSecrets;
     use crate::ClientConfig;
 
@@ -632,8 +633,13 @@ mod connection {
         /// we behave in the TLS protocol, `name` is the
         /// name of the server we want to talk to.
         pub fn new(config: Arc<ClientConfig>, name: ServerName<'static>) -> Result<Self, Error> {
+            Self::with_random(config, name, None)
+        }
+
+        /// Like `new`, but with custom client random.
+        pub fn with_random(config: Arc<ClientConfig>, name: ServerName<'static>, random: Option<Random>) -> Result<Self, Error> {
             Ok(Self {
-                inner: ConnectionCore::for_client(config, name, Vec::new(), Protocol::Tcp)?.into(),
+                inner: ConnectionCore::for_client(config, name, Vec::new(), Protocol::Tcp, random)?.into(),
             })
         }
 
@@ -739,6 +745,7 @@ impl ConnectionCore<ClientConnectionData> {
         name: ServerName<'static>,
         extra_exts: Vec<ClientExtension>,
         proto: Protocol,
+        random: Option<Random>,
     ) -> Result<Self, Error> {
         let mut common_state = CommonState::new(Side::Client);
         common_state.set_max_fragment_size(config.max_fragment_size)?;
@@ -753,7 +760,7 @@ impl ConnectionCore<ClientConnectionData> {
             sendable_plaintext: None,
         };
 
-        let state = hs::start_handshake(name, extra_exts, config, &mut cx)?;
+        let state = hs::start_handshake(name, extra_exts, config, random, &mut cx)?;
         Ok(Self::new(state, data, common_state))
     }
 
@@ -774,8 +781,13 @@ impl UnbufferedClientConnection {
     /// Make a new ClientConnection. `config` controls how we behave in the TLS protocol, `name` is
     /// the name of the server we want to talk to.
     pub fn new(config: Arc<ClientConfig>, name: ServerName<'static>) -> Result<Self, Error> {
+        Self::with_random(config, name, None)
+    }
+
+    /// Like `new`, but with custom client random.
+    pub fn with_random(config: Arc<ClientConfig>, name: ServerName<'static>, random: Option<Random>) -> Result<Self, Error> {
         Ok(Self {
-            inner: ConnectionCore::for_client(config, name, Vec::new(), Protocol::Tcp)?.into(),
+            inner: ConnectionCore::for_client(config, name, Vec::new(), Protocol::Tcp, random)?.into(),
         })
     }
 }
