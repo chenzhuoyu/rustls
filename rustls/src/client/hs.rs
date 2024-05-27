@@ -97,6 +97,7 @@ pub(super) fn start_handshake(
     server_name: ServerName<'static>,
     extra_exts: Vec<ClientExtension>,
     config: Arc<ClientConfig>,
+    random: Option<Random>,
     cx: &mut ClientContext<'_>,
 ) -> NextStateOrError<'static> {
     let mut transcript_buffer = HandshakeHashBuffer::new();
@@ -149,7 +150,7 @@ pub(super) fn start_handshake(
         None => SessionId::random(config.provider.secure_random)?,
     };
 
-    let random = Random::new(config.provider.secure_random)?;
+    let random = random.map(Ok).unwrap_or_else(|| Random::new(config.provider.secure_random))?;
     let extension_order_seed = crate::rand::random_u16(config.provider.secure_random)?;
 
     let ech_state = match config.ech_mode.as_ref() {
