@@ -181,7 +181,8 @@ mod connection {
                 Version::V1 | Version::V2 => ClientExtension::TransportParameters(params),
             };
 
-            let mut inner = ConnectionCore::for_client(config, name, vec![ext], Protocol::Quic, None)?;
+            let mut inner =
+                ConnectionCore::for_client(config, name, vec![ext], Protocol::Quic, None, None)?;
             inner.common_state.quic.version = quic_version;
             Ok(Self {
                 inner: inner.into(),

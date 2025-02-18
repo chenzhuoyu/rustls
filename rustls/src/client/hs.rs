@@ -98,6 +98,7 @@ pub(super) fn start_handshake(
     extra_exts: Vec<ClientExtension>,
     config: Arc<ClientConfig>,
     random: Option<Random>,
+    session_id: Option<SessionId>,
     cx: &mut ClientContext<'_>,
 ) -> NextStateOrError<'static> {
     let mut transcript_buffer = HandshakeHashBuffer::new();
@@ -120,7 +121,14 @@ pub(super) fn start_handshake(
         None
     };
 
-    let session_id = if let Some(_resuming) = &mut resuming {
+    let session_id = if let Some(session_id) = session_id {
+        if config.supports_version(ProtocolVersion::TLSv1_3) {
+            debug!("Use provided session");
+            Some(session_id)
+        } else {
+            return Err(Error::General("Session ID requires TLS v1.3".to_owned()));
+        }
+    } else if let Some(_resuming) = &mut resuming {
         debug!("Resuming session");
 
         match &mut _resuming.value {
@@ -150,7 +158,9 @@ pub(super) fn start_handshake(
         None => SessionId::random(config.provider.secure_random)?,
     };
 
-    let random = random.map(Ok).unwrap_or_else(|| Random::new(config.provider.secure_random))?;
+    let random = random
+        .map(Ok)
+        .unwrap_or_else(|| Random::new(config.provider.secure_random))?;
     let extension_order_seed = crate::rand::random_u16(config.provider.secure_random)?;
 
     let ech_state = match config.ech_mode.as_ref() {
