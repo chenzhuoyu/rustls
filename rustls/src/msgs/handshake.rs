@@ -189,6 +189,16 @@ impl AsRef<[u8]> for SessionId {
     }
 }
 
+impl From<[u8; 32]> for SessionId {
+    #[inline]
+    fn from(bytes: [u8; 32]) -> Self {
+        Self {
+            len: 32,
+            data: bytes,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnknownExtension {
     pub(crate) typ: ExtensionType,
